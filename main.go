@@ -7,7 +7,7 @@ import (
 )
 
 func relayHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, "Welcome to Replay!")
+	fmt.Fprint(w, "Welcome to Relay!")
 
 }
 
