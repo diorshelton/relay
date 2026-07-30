@@ -141,7 +141,9 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/", relayHandler)
+	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "index.html")
+	})
 	mux.HandleFunc("/state", game.HandleState)
 	mux.HandleFunc("/move", game.HandleMove)
 
@@ -153,10 +155,5 @@ func main() {
 	if err != nil {
 		log.Fatalf("Server failed to start %v", err)
 	}
-
-}
-
-func relayHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, "Welcome to Relay!")
 
 }
