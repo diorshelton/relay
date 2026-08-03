@@ -159,8 +159,8 @@ func main() {
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "index.html")
 	})
-	mux.HandleFunc("/state", game.HandleState)
-	mux.HandleFunc("/move", game.HandleMove)
+	mux.HandleFunc("GET /state", game.HandleState)
+	mux.HandleFunc("POST /move", game.HandleMove)
 	mux.HandleFunc("POST /reset", game.HandleReset)
 
 	serverAddress := ":8080"
