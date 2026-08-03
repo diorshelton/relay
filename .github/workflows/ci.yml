@@ -8,6 +8,14 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      - name: Check formatting
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "The following files are not gofmt'ed:"
+            echo "$unformatted"
+            exit 1
+          fi
       - run: go build ./...
       - run: go vet ./...
       - run: go test -race ./...
