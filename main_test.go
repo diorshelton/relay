@@ -245,3 +245,90 @@ func TestHandleMove(t *testing.T) {
 		}
 	})
 }
+
+func TestReset(t *testing.T) {
+	game := NewGameState()
+	game.board = [9]string{"X", "O", "", "", "", "", "", "", ""}
+	game.turn = "O"
+
+	game.Reset()
+
+	if game.board != ([9]string{}) {
+		t.Errorf("board = %v, want empty", game.board)
+	}
+	if game.turn != "X" {
+		t.Errorf("turn = %q, want %q", game.turn, "X")
+	}
+}
+
+func TestHandleReset(t *testing.T) {
+	freshState := StateResponse{Board: [9]string{}, Turn: "X", Result: inProgress}
+
+	t.Run("reset after moves returns fresh state", func(t *testing.T) {
+		game := NewGameState()
+		if err := game.MakeMove(0); err != nil {
+			t.Fatalf("setup MakeMove(0) returned error: %v", err)
+		}
+		if err := game.MakeMove(3); err != nil {
+			t.Fatalf("setup MakeMove(3) returned error: %v", err)
+		}
+
+		req := httptest.NewRequest(http.MethodPost, "/reset", nil)
+		w := httptest.NewRecorder()
+		game.HandleReset(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
+		}
+		var got StateResponse
+		if err := json.NewDecoder(w.Body).Decode(&got); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+		if got != freshState {
+			t.Errorf("response = %+v, want %+v", got, freshState)
+		}
+	})
+
+	t.Run("reset clears a finished game", func(t *testing.T) {
+		game := NewGameState()
+		game.board = [9]string{"X", "X", "X", "O", "O", "", "", "", ""}
+
+		req := httptest.NewRequest(http.MethodPost, "/reset", nil)
+		w := httptest.NewRecorder()
+		game.HandleReset(w, req)
+
+		var got StateResponse
+		if err := json.NewDecoder(w.Body).Decode(&got); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+		if got.Result != inProgress {
+			t.Errorf("result = %v, want %v", got.Result, inProgress)
+		}
+	})
+
+	t.Run("game is playable again after reset", func(t *testing.T) {
+		game := NewGameState()
+		game.board = [9]string{"X", "X", "X", "O", "O", "", "", "", ""}
+		game.Reset()
+
+		if err := game.MakeMove(0); err != nil {
+			t.Errorf("MakeMove(0) after reset returned error: %v, want nil", err)
+		}
+	})
+
+	t.Run("reset on a fresh game is a no-op", func(t *testing.T) {
+		game := NewGameState()
+
+		req := httptest.NewRequest(http.MethodPost, "/reset", nil)
+		w := httptest.NewRecorder()
+		game.HandleReset(w, req)
+
+		var got StateResponse
+		if err := json.NewDecoder(w.Body).Decode(&got); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+		if got != freshState {
+			t.Errorf("response = %+v, want %+v", got, freshState)
+		}
+	})
+}

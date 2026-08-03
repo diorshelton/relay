@@ -84,6 +84,14 @@ func (game *GameState) MakeMove(position int) error {
 	return nil
 }
 
+func (game *GameState) Reset() {
+	game.mu.Lock()
+	defer game.mu.Unlock()
+
+	game.board = [9]string{}
+	game.turn = "X"
+}
+
 type StateResponse struct {
 	Board  [9]string `json:"board"`
 	Turn   string    `json:"turn"`
@@ -136,6 +144,13 @@ func (game *GameState) HandleMove(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(game.State())
 }
 
+func (game *GameState) HandleReset(w http.ResponseWriter, r *http.Request) {
+	game.Reset()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(game.State())
+}
+
 func main() {
 	game := NewGameState()
 
@@ -146,6 +161,7 @@ func main() {
 	})
 	mux.HandleFunc("/state", game.HandleState)
 	mux.HandleFunc("/move", game.HandleMove)
+	mux.HandleFunc("POST /reset", game.HandleReset)
 
 	serverAddress := ":8080"
 
