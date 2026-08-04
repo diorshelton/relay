@@ -68,4 +68,4 @@ returns. This mirrors the state-push pattern later phases will use over WebSocke
 rendering logic won't need to be rewritten — only the transport (fetch → socket) changes.
 
 Not yet built: WebSockets, matchmaking, auth, additional games beyond tic-tac-toe, and
-persistence beyond the single in-memory game. See `relayspec.md` for the full Phase 1 spec.
+persistence beyond the single in-memory game. See `specs/phase-1.md` for the full Phase 1 spec.
