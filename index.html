@@ -61,15 +61,15 @@
 	/* WEB SOCKET CONNECTION*/
 	let socket = new WebSocket("ws://"+ window.location.host + "/ws");
 	
-	const connStatusEL = document.getElementById('conn-status');
+	const connStatusEl = document.getElementById('conn-status');
 
 	socket.addEventListener("open", (event) => {
 		document.getElementById("conn-status").style.color = "green"
 		
 		//Send test message
-		socket.send(JSON.stringify({message: `Connection = ${connections}`}));
+		socket.send(JSON.stringify({message: `Connected`}));
 
-	})
+	});
 
 	socket.addEventListener("message", (event) => {
 		const data = JSON.parse(event.data);
@@ -77,12 +77,12 @@
 		if (data.type == "connection_update") {
 			connStatusEl.innerText = `Connected! Total Connections = ${data.count}`;
 		}
-	}
+	});
 
 	socket.onerror = (err) => {
-		connStatusEL.innerText = "Connection failed"	
-		connStatusEL.style.color = "red"	
-	}
+		connStatusEl.innerText = "Connection failed"	
+		connStatusEl.style.color = "red"	
+	};
 
 
   const statusEl = document.getElementById('status');

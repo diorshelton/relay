@@ -1,18 +1,16 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/coder/websocket"
-	"github.com/coder/websocket/wsjson"
 )
 
 func main() {
 	game := NewGameState()
+	hub := NewHub()
 
 	mux := http.NewServeMux()
 
@@ -27,9 +25,9 @@ func main() {
 
 	//Test WebSocket endpoint
 	mux.HandleFunc("GET /test", func(w http.ResponseWriter, r *http.Request) {
-
 		http.ServeFile(w, r, "./index.html")
 	})
+
 	mux.HandleFunc("GET /ws", func(w http.ResponseWriter, r *http.Request) {
 
 		c, err := websocket.Accept(w, r, nil)
@@ -37,20 +35,28 @@ func main() {
 			log.Printf("Handshake failed: %v\n", err)
 			return
 		}
-		defer c.Close(websocket.StatusNormalClosure, "closing connection")
 
 		log.Println("WebSocket connection established successfully")
 
-		//Keep connection open for one message
-		ctx, cancel := context.WithTimeout(r.Context(), time.Second*10)
-		defer cancel()
+		//add client connection to hub
+		hub.Add(c)
 
-		var v any
-		if err := wsjson.Read(ctx, c, &v); err != nil {
-			log.Println("Read error:", err)
-			return
+		// Cleanup runs when the user leaves or closes the tab
+		defer func() {
+			hub.Remove(c)
+			c.Close(websocket.StatusNormalClosure, "connection closed")
+		}()
+
+		// Keep the connection open and read incoming messages
+		ctx := r.Context()
+		for {
+			_, _, err := c.Read(ctx)
+			if err != nil {
+				// Loop breadks immediately if tab closes, triggering defer cleanup
+				log.Printf("Read error (connection dropped): %v", err)
+				break
+			}
 		}
-		log.Printf("Received from browser: %v", v)
 
 	})
 
