@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -48,7 +49,7 @@ func main() {
 		}()
 
 		// Keep the connection open and read incoming messages
-		ctx := r.Context()
+		ctx := context.Background()
 		for {
 			_, _, err := c.Read(ctx)
 			if err != nil {
