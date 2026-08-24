@@ -31,6 +31,9 @@ a chance to reconnect and resume their role before the game resets.
 - Four in a Row
 - Persistence beyond the current game's in-memory lifetime
 - Any JS framework or CSS framework (carried over from Phase 1)
+- Ping/pong idle-connection detection — a client that goes dark without a clean close (e.g. a
+  laptop sleeping) won't be caught until it errors out some other way. Acceptable gap for a short,
+  two-player game; revisit if silently-dead connections turn out to matter in practice.
 
 ## Architecture
 
@@ -54,6 +57,22 @@ a chance to reconnect and resume their role before the game resets.
   already safe for concurrent use — its purpose here is backpressure/decoupling, not
   correctness: the code that produces a new game state should never block on a slow client's
   socket write.
+- **Panic recovery:** each per-connection goroutine (read pump, write pump) recovers from
+  panics on its own. `net/http` only protects the initial handler goroutine automatically — an
+  unrecovered panic in a goroutine spawned from it takes down the whole process, not just that
+  one connection.
+- **Write pump shutdown:** a connection's `outbox` isn't only written to by its own read pump —
+  the *other* player's read pump also pushes into it after their move — so closing `outbox`
+  directly as a "stop" signal isn't safe (a send on a closed channel panics, and there's no way
+  to guarantee every other sender has stopped first). Instead, each connection gets a dedicated
+  `done chan struct{}` used purely as a signal, never for data — closing it is safe for any
+  number of concurrent receivers (`writePump`'s `select` included), since a receive on a closed
+  channel returns immediately rather than panicking. Both `readPump` and `writePump` can detect
+  connection failure independently (a read error vs. a write error), so the actual close is
+  wrapped in a `sync.Once` on an unexported `close()` method — whichever pump errors first calls
+  it, the other's call is a no-op. `outbox` and `done` are both plain, direction-unrestricted
+  `chan` fields on `Client`, not `<-chan`/`chan<-`, since different methods on the type need
+  different capabilities (send, receive, close) on the same field.
 - **Backpressure policy:** latest-value-wins, not a FIFO-buffered channel. State pushes are full
   snapshots (`{board, turn, result}`), so a value queued behind a slow write is worthless the
   moment a newer one exists — a size-1 "latest state" slot (drop-and-replace) fits better than
