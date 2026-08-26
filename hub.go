@@ -66,4 +66,3 @@ func (h *Hub) broadcastCount(count int) {
 		}
 	}
 }
-
