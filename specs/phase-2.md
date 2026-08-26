@@ -28,7 +28,7 @@ a chance to reconnect and resume their role before the game resets.
 - Multiple concurrent games (`map[gameID]*GameState`) — still one global game at a time, same as
   Phase 1
 - Spectators — a third connection attempt is rejected outright
-- Four in a Row
+- Grid Drop
 - Persistence beyond the current game's in-memory lifetime
 - Any JS framework or CSS framework (carried over from Phase 1)
 - Ping/pong idle-connection detection — a client that goes dark without a clean close (e.g. a
@@ -45,9 +45,10 @@ a chance to reconnect and resume their role before the game resets.
   architecture forced on it by a library correctness constraint (gorilla connections only
   support one concurrent writer; coder's `Write` is safe for concurrent use).
 - **This is the first deliberate deviation from Phase 1's "standard library only" rule.** Go's
-  standard library has no WebSocket implementation, so an external dependency is unavoidable for
-  genuine full-duplex networking. Called out explicitly here rather than left as a silent
-  `go.mod` change.
+  standard library itself has no WebSocket implementation, and `golang.org/x/net/websocket` —
+  the closest thing to one — is deprecated and unmaintained, so a maintained external dependency
+  is effectively unavoidable for genuine full-duplex networking. Called out explicitly here
+  rather than left as a silent `go.mod` change.
 - **State model:** still a single, global, in-memory `GameState`, guarded by its existing
   `sync.Mutex` — no multi-game support yet. The seam for `map[gameID]*GameState` remains
   available for a future phase but isn't built now.

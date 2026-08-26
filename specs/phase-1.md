@@ -2,7 +2,7 @@
 
 ## Context
 
-Relay is a networked multiplayer game platform (tic-tac-toe and Four in a Row to start), built to
+Relay is a networked multiplayer game platform (tic-tac-toe and Grid Drop to start), built to
 learn job-queue design, real-time networking, and load testing. The long-term architecture
 includes WebSockets, matchmaking (direct invite + open queue), and a separate load-testing
 service. **This spec covers Phase 1 only**: a single-process, single-game, no-networking
@@ -133,7 +133,7 @@ and useful for testing without restarting the server.
 - WebSockets / real networking between two separate clients
 - Matchmaking (direct invite or queue)
 - Auth (Clerk or otherwise)
-- Four in a Row
+- Grid Drop
 - Any package structure beyond `main.go` + `index.html`
 - Any JS framework or CSS framework
 - Persistence beyond the single in-memory game

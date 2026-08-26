@@ -1,72 +1,8 @@
-# Relay
-
-A networked multiplayer game platform, starting with tic-tac-toe, built to learn job-queue
-design, real-time networking, and load testing. The long-term architecture includes
-WebSockets, matchmaking (direct invite + open queue), multiple games, and a separate
-load-testing service.
-
-This repo currently implements Phase 1 and Phase 2 — see [Roadmap](#roadmap) for what that
-means and what's not built yet.
-
-## Running it
-
-```sh
-go run main.go
-```
-
-Then open `http://localhost:8080`.
-
-## API
-
-| Endpoint      | Method | Description                                              |
-|---------------|--------|-----------------------------------------------------------|
-| `/`           | GET    | Serves the board UI (`index.html`)                        |
-| `/state`      | GET    | Returns the current game state                            |
-| `/move`       | POST   | Applies a move: `{"position": 0-8}`                       |
-| `/reset`      | POST   | Resets the board to a fresh game                          |
-
-`GET /state` and `POST /move` return the same JSON shape:
-
-```json
-{
-  "board": ["", "X", "", "", "O", "", "", "", ""],
-  "turn": "X",
-  "result": "in_progress"
-}
-```
-
-`result` is one of `in_progress`, `x_wins`, `o_wins`, `draw`. Rejected moves (out of range,
-occupied cell, or game already over) return `400` with `{"error": "<reason>"}`.
-
-> Phase 2 replaces `/state` and `/move` with a single WebSocket connection at `/ws`. See
-> `specs/phase-2.md` for the message protocol.
-
-## Architecture
-
-- Go standard library only (`net/http`) through Phase 1 — Phase 2 adds `coder/websocket` as
-  the first external dependency, since the standard library has no WebSocket implementation.
-- Game state (`board`, `turn`) and a `sync.Mutex` live together on a single `GameState`
-  struct, bundled so the mutex's purpose is self-documenting rather than inferred.
-- Win/draw detection (`computeResult`) is a pure read over the board — it never locks, so it's
-  safe to call from methods that already hold the lock (like `MakeMove`).
-- Handlers are methods on `*GameState` rather than closures over a package-level global, which
-  keeps each HTTP test able to construct its own isolated game instance.
-
-## Testing
-
-```sh
-go test ./...
-go test -race ./...
-```
-
-Covers win/draw detection across all 8 lines, move validation and turn tracking, HTTP handler
-behavior via `httptest`, and reset.
-
-## Roadmap
+# Relay — Roadmap
 
 This project is being built in phases, sequenced so each one both ships something playable
 and deliberately teaches a specific Go/systems-design concept, rather than piling on
-everything at once.
+everything at once. See [README.md](README.md) for what's runnable right now.
 
 ### Phase 1 — Hotseat, single process (done)
 
@@ -75,22 +11,22 @@ alternating turns as X and O. The server owns all game state and logic; the clie
 renders whatever JSON it's given — a state-push pattern that carries forward unchanged into
 later phases. See `specs/phase-1.md`.
 
-### Phase 2 — Networked multiplayer over WebSockets 
+### Phase 2 — Networked multiplayer over WebSockets (in progress)
 
 Two players in separate browser tabs play over a live WebSocket connection instead of sharing
 a tab. Introduces the read-pump/write-pump-per-connection pattern, latest-value-wins
 backpressure on state pushes, and an ephemeral reconnect-token scheme with a 20-second grace
 period on disconnect. See `specs/phase-2.md`.
 
-### Phase 3 — Multi-game support, matchmaking, Connect 4 
+### Phase 3 — Multi-game support, matchmaking, Grid Drop
 
 - Generalizes the single global `GameState` into a registry (`map[gameID]*GameState`), with
   its own mutex guarding only the map — not the games inside it, to avoid serializing every
   game behind one lock.
 - A matchmaking queue keyed by game type from the start (even with only two types registered),
-  so a Connect 4 player can never be paired with a tic-tac-toe player, and adding a third game
+  so a Grid Drop player can never be paired with a tic-tac-toe player, and adding a third game
   type later doesn't force a redesign.
-- Connect 4 as a second turn-based game, implemented against a generalized `Game` interface.
+- Grid Drop as a second turn-based game, implemented against a generalized `Game` interface.
   Chosen specifically to validate that abstraction (registry + matcher + interface) using a
   game shaped like the one that already works, before Phase 5 also has to solve real-time
   state ownership at the same time.
