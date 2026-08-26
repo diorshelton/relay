@@ -52,3 +52,61 @@ direct writes from `Hub` bypass the backpressure/decoupling the pump architectur
 
 **Deferred.** Revisit when wiring `writePump` in — `broadcastCount` (or whatever replaces it)
 should push onto each `Client`'s `outbox` instead of writing directly.
+
+## Next feature: Player identity & reconnection — scope and open alignment issues
+
+**Context:** Scoped as the next feature branch after the Phase 2 scaffolding PR (#2). Implements
+the token-based reconnection design already specified in `specs/phase-2.md`'s "Session & role
+assignment" and "Disconnect & reconnection" sections. Recorded here rather than folded straight
+into a branch because scoping it surfaced open questions that need resolving before, or while,
+building it.
+
+**Scope, as given:**
+
+1. Token generation & role assignment
+   - [ ] On successful role assignment for a fresh connection, generate an opaque random session
+     token (UUID)
+   - [ ] Store it in an in-memory map: token → role, scoped to the current game's lifetime
+   - [ ] Send the token to the client as the first message on the open socket:
+     `{type: "token", token: "..."}`
+2. Client-side token storage
+   - [ ] On receiving the `{type: "token"}` message, write the token to storage
+   - [ ] On page load, before opening the socket, check storage for an existing token
+   - [ ] If present, append it as a query param on the WS upgrade request: `GET /ws?token=...`
+   - [ ] If absent, connect fresh with no token param
+3. Reconnection validation (server)
+   - [ ] On upgrade request, check for a token query param
+   - [ ] Validate the token against the in-memory map — same decision point as fresh-connection
+     role assignment, not a separate path
+   - [ ] Valid token, role in disconnect grace period: resume that role, cancel the grace-period
+     timer
+   - [ ] Invalid, expired, or already-resumed token: reject at the HTTP layer (403) before
+     completing the handshake
+4. Disconnect handling
+   - [ ] On socket close, start a grace-period timer for that role (rather than immediately
+     freeing it)
+   - [ ] Confirm/define grace-period duration
+   - [ ] On grace-period expiry with no reconnect, free the role/token for reassignment
+5. Cleanup
+   - [ ] Decide and implement: clear token from client storage on game end (win/draw) — vs.
+     leaving it stale
+   - [ ] Decide and implement: clear/invalidate token from server's in-memory map at game end
+
+**Open alignment issues surfaced during scoping (resolve before/while implementing):**
+
+- **Prerequisite from `HANDOFF.md`:** three `Client`/`Join` design decisions were left open
+  before item 1's role-assignment work can start — `role`'s type (bare `string` vs. a typed
+  enum), how `Client` reaches `GameState` (stored field vs. a parameter to pump methods), and
+  `Join`'s exact signature/behavior.
+- **Item 2 storage mechanism:** the scope above says `localStorage`; `specs/phase-2.md:174`
+  specified an in-memory JS variable, "for the tab's session," never persisted. `localStorage`
+  is shared across every same-origin tab, so two players' tabs in the same browser would collide
+  on the same key. Needs a decision: is surviving a page reload an intentional scope increase
+  over the spec, and if so, is `sessionStorage` (per-tab) the right primitive instead of
+  `localStorage`?
+- **Item 4 grace-period duration:** `specs/phase-2.md:125` already fixed this at 20 seconds.
+  Confirm this task reuses that value rather than reopening it.
+
+**Undecided.** The three `Client`/`Join` items block starting this feature branch. The storage
+and duration questions are smaller but shouldn't be silently defaulted during implementation —
+resolve explicitly, even if quickly.
