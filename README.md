@@ -1,5 +1,9 @@
 # Relay
 
+[![CI](https://github.com/diorshelton/relay/actions/workflows/ci.yml/badge.svg)](https://github.com/diorshelton/relay/actions/workflows/ci.yml)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/diorshelton/relay)](go.mod)
+[![License: MIT](https://img.shields.io/github/license/diorshelton/relay)](LICENSE)
+
 A networked multiplayer game platform, starting with tic-tac-toe, built to learn job-queue
 design, real-time networking, and load testing. The long-term architecture includes
 WebSockets, matchmaking (direct invite + open queue), multiple games, and a separate
