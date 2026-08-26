@@ -1,167 +1,65 @@
 package main
 
 import (
-	"encoding/json"
-	"errors"
+	"context"
 	"fmt"
 	"log"
 	"net/http"
-	"sync"
+
+	"github.com/coder/websocket"
 )
-
-var (
-	ErrOutOfRange   = errors.New("position out of range")
-	ErrCellOccupied = errors.New("cell already occupied")
-	ErrGameOver     = errors.New("game is already over")
-)
-
-type result string
-
-const (
-	inProgress result = "in_progress"
-	xWins      result = "x_wins"
-	oWins      result = "o_wins"
-	draw       result = "draw"
-)
-
-var winningLines = [8][3]int{
-	{0, 1, 2}, {3, 4, 5}, {6, 7, 8}, // rows
-	{0, 3, 6}, {1, 4, 7}, {2, 5, 8}, // columns
-	{0, 4, 8}, {2, 4, 6}, // diagonals
-}
-
-type GameState struct {
-	turn  string
-	board [9]string
-	mu    sync.Mutex
-}
-
-func NewGameState() *GameState {
-	return &GameState{turn: "X"}
-}
-
-func (game *GameState) computeResult() result {
-	for _, line := range winningLines {
-		a, b, c := line[0], line[1], line[2]
-		if game.board[a] != "" && game.board[a] == game.board[b] && game.board[b] == game.board[c] {
-			if game.board[a] == "X" {
-				return xWins
-			}
-			return oWins
-		}
-	}
-
-	for _, cell := range game.board {
-		if cell == "" {
-			return inProgress
-		}
-	}
-
-	return draw
-}
-
-func (game *GameState) MakeMove(position int) error {
-	game.mu.Lock()
-	defer game.mu.Unlock()
-
-	if position < 0 || position > 8 {
-		return ErrOutOfRange
-	}
-	if game.board[position] != "" {
-		return ErrCellOccupied
-	}
-	if game.computeResult() != inProgress {
-		return ErrGameOver
-	}
-
-	game.board[position] = game.turn
-	if game.turn == "X" {
-		game.turn = "O"
-	} else {
-		game.turn = "X"
-	}
-
-	return nil
-}
-
-func (game *GameState) Reset() {
-	game.mu.Lock()
-	defer game.mu.Unlock()
-
-	game.board = [9]string{}
-	game.turn = "X"
-}
-
-type StateResponse struct {
-	Board  [9]string `json:"board"`
-	Turn   string    `json:"turn"`
-	Result result    `json:"result"`
-}
-
-type moveRequest struct {
-	Position int `json:"position"`
-}
-
-type errorResponse struct {
-	Error string `json:"error"`
-}
-
-func (game *GameState) State() StateResponse {
-	game.mu.Lock()
-	defer game.mu.Unlock()
-
-	return StateResponse{
-		Board:  game.board,
-		Turn:   game.turn,
-		Result: game.computeResult(),
-	}
-}
-
-func writeError(w http.ResponseWriter, status int, msg string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(errorResponse{Error: msg})
-}
-
-func (game *GameState) HandleState(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(game.State())
-}
-
-func (game *GameState) HandleMove(w http.ResponseWriter, r *http.Request) {
-	var req moveRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
-		return
-	}
-
-	if err := game.MakeMove(req.Position); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(game.State())
-}
-
-func (game *GameState) HandleReset(w http.ResponseWriter, r *http.Request) {
-	game.Reset()
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(game.State())
-}
 
 func main() {
 	game := NewGameState()
+	hub := NewHub()
 
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "index.html")
+
 	})
+
 	mux.HandleFunc("GET /state", game.HandleState)
 	mux.HandleFunc("POST /move", game.HandleMove)
 	mux.HandleFunc("POST /reset", game.HandleReset)
+
+	//Test WebSocket endpoint
+	mux.HandleFunc("GET /test", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./index.html")
+	})
+
+	mux.HandleFunc("GET /ws", func(w http.ResponseWriter, r *http.Request) {
+
+		c, err := websocket.Accept(w, r, nil)
+		if err != nil {
+			log.Printf("Handshake failed: %v\n", err)
+			return
+		}
+
+		log.Println("WebSocket connection established successfully")
+
+		//add client connection to hub
+		hub.Add(c)
+
+		// Cleanup runs when the user leaves or closes the tab
+		defer func() {
+			hub.Remove(c)
+			c.Close(websocket.StatusNormalClosure, "connection closed")
+		}()
+
+		// Keep the connection open and read incoming messages
+		ctx := context.Background()
+		for {
+			_, _, err := c.Read(ctx)
+			if err != nil {
+				// Loop breadks immediately if tab closes, triggering defer cleanup
+				log.Printf("Read error (connection dropped): %v", err)
+				break
+			}
+		}
+
+	})
 
 	serverAddress := ":8080"
 

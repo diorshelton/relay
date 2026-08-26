@@ -1,1 +1,48 @@
 relay
+
+# macOS
+.DS_Store
+
+# Compiled binaries and package files
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binaries and build artifacts
+*.test
+*.out
+
+# Test coverage artifacts
+coverage.txt
+*.coverprofile
+profile.cov
+
+# Dependency directories
+# Un-comment the line below if you explicitly bundle your dependencies using 'go mod vendor'
+# vendor/
+
+# Go workspace files
+go.work
+go.work.sum
+
+# Local environment variables
+.env
+.env.local
+
+# VS Code
+.vscode/
+
+# Vim / Neovim
+*.swp
+*.swo
+*~
+Session.vim
+.netrwhist
+
+# JetBrains (GoLand, etc.)
+.idea/
+
+# Claude
+HANDOFF.md

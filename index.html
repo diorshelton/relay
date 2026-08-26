@@ -43,6 +43,7 @@
 
 <h1>Relay</h1>
 <div id="status"></div>
+<div id="conn-status"></div>
 <div id="board">
   <button class="cell" data-position="0"></button>
   <button class="cell" data-position="1"></button>
@@ -56,6 +57,34 @@
 </div>
 
 <script>
+
+	/* WEB SOCKET CONNECTION*/
+	let socket = new WebSocket("ws://"+ window.location.host + "/ws");
+	
+	const connStatusEl = document.getElementById('conn-status');
+
+	socket.addEventListener("open", (event) => {
+		document.getElementById("conn-status").style.color = "green"
+		
+		//Send test message
+		socket.send(JSON.stringify({message: `Connected`}));
+
+	});
+
+	socket.addEventListener("message", (event) => {
+		const data = JSON.parse(event.data);
+		//Check if the server sent a connection count update
+		if (data.type == "connection_update") {
+			connStatusEl.innerText = `Connected! Total Connections = ${data.count}`;
+		}
+	});
+
+	socket.onerror = (err) => {
+		connStatusEl.innerText = "Connection failed"	
+		connStatusEl.style.color = "red"	
+	};
+
+
   const statusEl = document.getElementById('status');
   const cells = document.querySelectorAll('.cell');
 
