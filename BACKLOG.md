@@ -42,3 +42,13 @@ only client-controllable pieces), so adopting a cookie means also adopting `Set-
 semantics and flags (`HttpOnly`, `Secure`, `SameSite`) — more machinery than this phase needs.
 
 **Deferred.** Revisit if this moves behind a proxy/CDN or logging becomes a real concern.
+
+## Hub broadcast writes bypass the write-pump pattern
+
+**Context:** `broadcastCount` (`hub.go:62`) writes directly to each connection via `conn.Write()`.
+Once per-connection write pumps (`outbox`/`done`, see `specs/phase-2.md`'s write pump shutdown
+design) exist, nothing should write to a connection except that connection's own write pump —
+direct writes from `Hub` bypass the backpressure/decoupling the pump architecture exists for.
+
+**Deferred.** Revisit when wiring `writePump` in — `broadcastCount` (or whatever replaces it)
+should push onto each `Client`'s `outbox` instead of writing directly.
