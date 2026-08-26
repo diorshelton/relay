@@ -43,3 +43,6 @@ Session.vim
 
 # JetBrains (GoLand, etc.)
 .idea/
+
+# Claude
+HANDOFF.md
