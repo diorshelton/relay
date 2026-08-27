@@ -76,8 +76,8 @@ func TestMakeMove(t *testing.T) {
 		if game.board[4] != "X" {
 			t.Errorf("board[4] = %q, want %q", game.board[4], "X")
 		}
-		if game.turn != "O" {
-			t.Errorf("turn = %q, want %q", game.turn, "O")
+		if game.turn != oRole {
+			t.Errorf("turn = %q, want %q", game.turn, oRole)
 		}
 	})
 
@@ -249,15 +249,15 @@ func TestHandleMove(t *testing.T) {
 func TestReset(t *testing.T) {
 	game := NewGameState()
 	game.board = [9]string{"X", "O", "", "", "", "", "", "", ""}
-	game.turn = "O"
+	game.turn = oRole
 
 	game.Reset()
 
 	if game.board != ([9]string{}) {
 		t.Errorf("board = %v, want empty", game.board)
 	}
-	if game.turn != "X" {
-		t.Errorf("turn = %q, want %q", game.turn, "X")
+	if game.turn != xRole {
+		t.Errorf("turn = %q, want %q", game.turn, xRole)
 	}
 }
 
