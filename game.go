@@ -22,6 +22,13 @@ const (
 	draw       result = "draw"
 )
 
+type Role string
+
+const (
+	xRole Role = "X"
+	oRole Role = "O"
+)
+
 var winningLines = [8][3]int{
 	{0, 1, 2}, {3, 4, 5}, {6, 7, 8}, // rows
 	{0, 3, 6}, {1, 4, 7}, {2, 5, 8}, // columns
@@ -29,20 +36,20 @@ var winningLines = [8][3]int{
 }
 
 type GameState struct {
-	turn  string
+	turn  Role
 	board [9]string
 	mu    sync.Mutex
 }
 
 func NewGameState() *GameState {
-	return &GameState{turn: "X"}
+	return &GameState{turn: xRole}
 }
 
 func (game *GameState) computeResult() result {
 	for _, line := range winningLines {
 		a, b, c := line[0], line[1], line[2]
 		if game.board[a] != "" && game.board[a] == game.board[b] && game.board[b] == game.board[c] {
-			if game.board[a] == "X" {
+			if game.board[a] == string(xRole) {
 				return xWins
 			}
 			return oWins
@@ -72,11 +79,11 @@ func (game *GameState) MakeMove(position int) error {
 		return ErrGameOver
 	}
 
-	game.board[position] = game.turn
-	if game.turn == "X" {
-		game.turn = "O"
+	game.board[position] = string(game.turn)
+	if game.turn == xRole {
+		game.turn = oRole
 	} else {
-		game.turn = "X"
+		game.turn = xRole
 	}
 
 	return nil
@@ -87,12 +94,12 @@ func (game *GameState) Reset() {
 	defer game.mu.Unlock()
 
 	game.board = [9]string{}
-	game.turn = "X"
+	game.turn = xRole
 }
 
 type StateResponse struct {
 	Board  [9]string `json:"board"`
-	Turn   string    `json:"turn"`
+	Turn   Role      `json:"turn"`
 	Result result    `json:"result"`
 }
 
