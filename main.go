@@ -40,7 +40,13 @@ func main() {
 		log.Println("WebSocket connection established successfully")
 
 		//add client connection to hub
-		hub.Add(c)
+		_, err = hub.Join(c, game)
+		if err != nil {
+			c.Close(websocket.StatusPolicyViolation, "game already full")
+			return
+		}
+
+		hub.broadcastCount()
 
 		// Cleanup runs when the user leaves or closes the tab
 		defer func() {
