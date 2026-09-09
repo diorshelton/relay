@@ -42,7 +42,9 @@ func main() {
 		//add client connection to hub
 		_, err = hub.Join(c, game)
 		if err != nil {
+			hub.Remove(c)
 			c.Close(websocket.StatusPolicyViolation, "game already full")
+			//TODO: Add fallback for closed connection after removal
 			return
 		}
 
