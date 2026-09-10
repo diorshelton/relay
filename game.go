@@ -1,9 +1,7 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
-	"net/http"
 	"sync"
 )
 
@@ -101,57 +99,4 @@ type StateResponse struct {
 	Board  [9]string `json:"board"`
 	Turn   Role      `json:"turn"`
 	Result result    `json:"result"`
-}
-
-type moveRequest struct {
-	Position int `json:"position"`
-}
-
-type errorResponse struct {
-	Error string `json:"error"`
-}
-
-func (game *GameState) State() StateResponse {
-	game.mu.Lock()
-	defer game.mu.Unlock()
-
-	return StateResponse{
-		Board:  game.board,
-		Turn:   game.turn,
-		Result: game.computeResult(),
-	}
-}
-
-func writeError(w http.ResponseWriter, status int, msg string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(errorResponse{Error: msg})
-}
-
-func (game *GameState) HandleState(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(game.State())
-}
-
-func (game *GameState) HandleMove(w http.ResponseWriter, r *http.Request) {
-	var req moveRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
-		return
-	}
-
-	if err := game.MakeMove(req.Position); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(game.State())
-}
-
-func (game *GameState) HandleReset(w http.ResponseWriter, r *http.Request) {
-	game.Reset()
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(game.State())
 }
