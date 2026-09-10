@@ -27,22 +27,19 @@ func TestApplyMove(t *testing.T) {
 			wantBoardCell: "O",
 		},
 	}
-
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
 			game := &GameState{
-				board: tc.initialBoard,
-				turn:  xRole,
+				Board: tc.initialBoard,
+				Turn:  xRole,
 			}
 
 			Player1 := &Player{
-				game:   game,
-				conn:   nil,
-				role:   xRole,
-				outbox: make(chan StateResponse, 1),
-				done:   make(chan struct{}),
+				game: game,
+				conn: nil,
+				role: xRole,
 			}
 
 			err := Player1.applyMove(tc.movePosition)
@@ -52,7 +49,7 @@ func TestApplyMove(t *testing.T) {
 
 			}
 
-			actualCell := Player1.game.board[tc.movePosition]
+			actualCell := Player1.game.Board[tc.movePosition]
 
 			if actualCell != tc.wantBoardCell {
 				t.Errorf("Board cell state mismatch at position %d: got %q, want %q", tc.movePosition, actualCell, tc.wantBoardCell)

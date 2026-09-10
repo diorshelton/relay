@@ -46,7 +46,7 @@ func TestJoin(t *testing.T) {
 	}
 
 	game := &GameState{
-		turn: xRole,
+		Turn: xRole,
 	}
 
 	for _, tc := range tests {

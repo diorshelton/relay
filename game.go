@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"sync"
 )
 
 var (
@@ -34,27 +33,29 @@ var winningLines = [8][3]int{
 }
 
 type GameState struct {
-	turn  Role
-	board [9]string
-	mu    sync.Mutex
+	Board   [9]string `json:"board"`
+	Turn    Role      `json:"turn"`
+	Result  result    `json:"result"`
+	Message string    `json:"message"`
 }
 
 func NewGameState() *GameState {
-	return &GameState{turn: xRole}
+	return &GameState{Turn: xRole}
 }
 
-func (game *GameState) computeResult() result {
+func (game *GameState) checkWin() result {
 	for _, line := range winningLines {
+
 		a, b, c := line[0], line[1], line[2]
-		if game.board[a] != "" && game.board[a] == game.board[b] && game.board[b] == game.board[c] {
-			if game.board[a] == string(xRole) {
+		if game.Board[a] != "" && game.Board[a] == game.Board[b] && game.Board[b] == game.Board[c] {
+			if game.Board[a] == string(xRole) {
 				return xWins
 			}
 			return oWins
 		}
 	}
 
-	for _, cell := range game.board {
+	for _, cell := range game.Board {
 		if cell == "" {
 			return inProgress
 		}
@@ -64,39 +65,31 @@ func (game *GameState) computeResult() result {
 }
 
 func (game *GameState) MakeMove(position int) error {
-	game.mu.Lock()
-	defer game.mu.Unlock()
-
 	if position < 0 || position > 8 {
 		return ErrOutOfRange
 	}
-	if game.board[position] != "" {
+	if game.Board[position] != "" {
 		return ErrCellOccupied
 	}
-	if game.computeResult() != inProgress {
+	if game.checkWin() != inProgress {
 		return ErrGameOver
 	}
 
-	game.board[position] = string(game.turn)
-	if game.turn == xRole {
-		game.turn = oRole
+	game.Board[position] = string(game.Turn)
+
+	game.Result = game.checkWin()
+
+	if game.Turn == xRole {
+		game.Turn = oRole
 	} else {
-		game.turn = xRole
+		game.Turn = xRole
 	}
 
 	return nil
 }
 
 func (game *GameState) Reset() {
-	game.mu.Lock()
-	defer game.mu.Unlock()
-
-	game.board = [9]string{}
-	game.turn = xRole
-}
-
-type StateResponse struct {
-	Board  [9]string `json:"board"`
-	Turn   Role      `json:"turn"`
-	Result result    `json:"result"`
+	game.Board = [9]string{}
+	game.Result = inProgress
+	game.Turn = xRole
 }
