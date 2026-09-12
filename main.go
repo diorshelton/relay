@@ -11,7 +11,7 @@ import (
 
 func main() {
 	game := NewGameState()
-	hub := NewHub()
+	hub := NewHub(game)
 
 	mux := http.NewServeMux()
 
@@ -31,7 +31,7 @@ func main() {
 		log.Println("WebSocket connection established successfully")
 
 		//add client connection to hub
-		_, err = hub.Join(c, game)
+		_, err = hub.Join(c)
 		if err != nil {
 			hub.Remove(c)
 			c.Close(websocket.StatusPolicyViolation, "game already full")

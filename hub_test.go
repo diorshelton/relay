@@ -41,17 +41,17 @@ func TestJoin(t *testing.T) {
 		},
 	}
 
-	hub := &Hub{
-		connections: make(map[*websocket.Conn]*Player),
-	}
-
 	game := &GameState{
 		Turn: xRole,
 	}
 
+	hub := &Hub{
+		connections: make(map[*websocket.Conn]*Player), room: game,
+	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			player, err := hub.Join(tc.conn, game)
+			player, err := hub.Join(tc.conn)
 
 			conns := len(hub.connections)
 
@@ -73,8 +73,8 @@ func TestJoin(t *testing.T) {
 func TestBroadcastCount(t *testing.T) {
 	t.Parallel()
 
-	hub := NewHub()
 	game := NewGameState()
+	hub := NewHub(game)
 
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, err := websocket.Accept(w, r, &websocket.AcceptOptions{
@@ -85,7 +85,7 @@ func TestBroadcastCount(t *testing.T) {
 		}
 		defer c.Close(websocket.StatusInternalError, "internal error")
 
-		_, err = hub.Join(c, game)
+		_, err = hub.Join(c)
 		if err != nil {
 			c.Close(websocket.StatusPolicyViolation, "game already full")
 			return

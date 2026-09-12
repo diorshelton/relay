@@ -1,6 +1,14 @@
 package main
 
-import "github.com/coder/websocket"
+import (
+	"errors"
+
+	"github.com/coder/websocket"
+)
+
+var (
+	ErrWrongTurn = errors.New("opposing player's turn")
+)
 
 type Player struct {
 	game *GameState
@@ -9,6 +17,10 @@ type Player struct {
 }
 
 func (p *Player) applyMove(position int) error {
-	return p.game.MakeMove(position)
+	//validate move
+	if p.role != p.game.Turn {
+		return ErrWrongTurn
+	}
 
+	return p.game.MakeMove(position)
 }

@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/coder/websocket"
+	"github.com/coder/websocket/wsjson"
 )
 
 var (
@@ -21,35 +22,34 @@ type ConnectionMessage struct {
 
 type Hub struct {
 	mu          sync.Mutex
+	room        *GameState
 	connections map[*websocket.Conn]*Player
 }
 
-func NewHub() *Hub {
+func NewHub(game *GameState) *Hub {
 	return &Hub{
 		connections: make(map[*websocket.Conn]*Player),
+		room:        game,
 	}
 }
 
-func (h *Hub) Join(conn *websocket.Conn, game *GameState) (*Player, error) {
+func (h *Hub) Join(conn *websocket.Conn) (*Player, error) {
 	h.mu.Lock()
+	defer h.mu.Unlock()
+
 	count := len(h.connections)
 
-	var role Role
-
-	switch {
-	case count == 0:
-		role = xRole
-	case count == 1:
-		role = oRole
-	case count >= 2:
-		h.mu.Unlock()
+	if count >= 2 {
 		return nil, ErrGameFull
 	}
 
-	newPlayer := Player{game: game, conn: conn, role: role}
-	h.connections[conn] = &newPlayer
+	role := oRole
+	if count == 0 {
+		role = xRole
+	}
 
-	h.mu.Unlock()
+	newPlayer := Player{game: h.room, conn: conn, role: role}
+	h.connections[conn] = &newPlayer
 
 	return &newPlayer, nil
 }
@@ -80,6 +80,18 @@ func (h *Hub) broadcastCount() {
 	//Iterate through every active connection and write the message
 	for conn := range h.connections {
 		err := conn.Write(context.Background(), websocket.MessageText, payload)
+		if err != nil {
+			log.Printf("Failed writing to connection: %v", err)
+		}
+	}
+}
+
+func (h *Hub) broadcastState() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	for conn := range h.connections {
+		err := wsjson.Write(context.Background(), conn, h.room)
 		if err != nil {
 			log.Printf("Failed writing to connection: %v", err)
 		}
