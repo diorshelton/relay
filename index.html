@@ -65,10 +65,6 @@
 
 	socket.addEventListener("open", (event) => {
 		document.getElementById("conn-status").style.color = "green"
-		
-		//Send test message
-		socket.send(JSON.stringify({message: `Connected`}));
-
 	});
 
 	socket.addEventListener("message", (event) => {
@@ -112,23 +108,13 @@
     render(data);
   }
 
-  async function makeMove(position) {
-    const res = await fetch('/move', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ position }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      render(data);
-    } else {
-      showError(data.error);
-    }
-  }
+	function sendPosition(cell) {
+	socket.send(JSON.stringify({"position": Number(cell.dataset.position)}));
+}
 
   cells.forEach((cell) => {
     cell.addEventListener('click', () => {
-      makeMove(Number(cell.dataset.position));
+	sendPosition(cell)
     });
   });
 

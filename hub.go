@@ -20,6 +20,10 @@ type ConnectionMessage struct {
 	Count int    `json:"count"`
 }
 
+type MoveMessage struct {
+	Position int `json:"position"`
+}
+
 type Hub struct {
 	mu          sync.Mutex
 	room        *GameState

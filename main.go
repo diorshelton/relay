@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/coder/websocket"
+	"github.com/coder/websocket/wsjson"
 )
 
 func main() {
@@ -31,7 +32,7 @@ func main() {
 		log.Println("WebSocket connection established successfully")
 
 		//add client connection to hub
-		_, err = hub.Join(c)
+		player, err := hub.Join(c)
 		if err != nil {
 			hub.Remove(c)
 			c.Close(websocket.StatusPolicyViolation, "game already full")
@@ -39,6 +40,7 @@ func main() {
 			return
 		}
 
+		//		hub.broadcastState()
 		hub.broadcastCount()
 
 		// Cleanup runs when the user leaves or closes the tab
@@ -49,13 +51,21 @@ func main() {
 
 		// Keep the connection open and read incoming messages
 		ctx := context.Background()
+		var msg MoveMessage
+
 		for {
-			_, _, err := c.Read(ctx)
+			err := wsjson.Read(ctx, c, &msg)
 			if err != nil {
 				// Loop breadks immediately if tab closes, triggering defer cleanup
-				log.Printf("Read error (connection dropped): %v", err)
+				log.Printf("Read error: %v", err)
 				break
 			}
+
+			err = player.applyMove(msg.Position)
+			if err != nil {
+				log.Printf("Move err: %v", err)
+			}
+
 		}
 
 	})
