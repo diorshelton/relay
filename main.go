@@ -61,14 +61,13 @@ func main() {
 				break
 			}
 
-			err = player.applyMove(msg.Position)
+			err = hub.applyMove(player, msg.Position)
 			if err != nil {
 				log.Printf("Move err: %v", err)
 			}
 
 			hub.broadcastState()
 		}
-
 	})
 
 	serverAddress := ":8080"

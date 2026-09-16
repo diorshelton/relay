@@ -13,7 +13,8 @@ import (
 )
 
 var (
-	ErrGameFull = errors.New("game is already full")
+	ErrGameFull  = errors.New("game is already full")
+	ErrWrongTurn = errors.New("opposing player's turn")
 )
 
 type ConnectionMessage struct {
@@ -53,10 +54,21 @@ func (h *Hub) Join(conn *websocket.Conn) (*Player, error) {
 		role = xRole
 	}
 
-	newPlayer := Player{game: h.room, conn: conn, role: role}
+	newPlayer := Player{conn: conn, role: role}
 	h.connections[conn] = &newPlayer
 
 	return &newPlayer, nil
+}
+
+func (h *Hub) applyMove(player *Player, position int) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	if player.role != h.room.Turn {
+		return ErrWrongTurn
+	}
+
+	return h.room.MakeMove(position)
 }
 
 func (h *Hub) Remove(conn *websocket.Conn) {
@@ -70,6 +82,8 @@ func (h *Hub) Remove(conn *websocket.Conn) {
 func (h *Hub) broadcastCount() {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
 
 	msg := ConnectionMessage{
 		Type:  "connection_update",
@@ -84,7 +98,7 @@ func (h *Hub) broadcastCount() {
 
 	//Iterate through every active connection and write the message
 	for conn := range h.connections {
-		err := conn.Write(context.Background(), websocket.MessageText, payload)
+		err := conn.Write(ctx, websocket.MessageText, payload)
 		if err != nil {
 			log.Printf("Failed writing to connection: %v", err)
 		}
