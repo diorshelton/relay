@@ -40,8 +40,8 @@ func main() {
 			return
 		}
 
-		//		hub.broadcastState()
 		hub.broadcastCount()
+		hub.broadcastState()
 
 		// Cleanup runs when the user leaves or closes the tab
 		defer func() {
@@ -66,6 +66,7 @@ func main() {
 				log.Printf("Move err: %v", err)
 			}
 
+			hub.broadcastState()
 		}
 
 	})

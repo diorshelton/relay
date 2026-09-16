@@ -73,6 +73,10 @@
 		if (data.type == "connection_update") {
 			connStatusEl.innerText = `Connected! Total Connections = ${data.count}`;
 		}
+		
+		if (data.board) {
+			loadState(data)
+		}
 	});
 
 	socket.onerror = (err) => {
@@ -81,44 +85,41 @@
 	};
 
 
-  const statusEl = document.getElementById('status');
-  const cells = document.querySelectorAll('.cell');
+const statusEl = document.getElementById('status');
+const cells = document.querySelectorAll('.cell');
 
-  const RESULT_TEXT = {
-    in_progress: null,
-    x_wins: "X wins!",
-    o_wins: "O wins!",
-    draw: "Draw!",
-  };
+const RESULT_TEXT = {
+	in_progress: null,
+	x_wins: "X wins!",
+	o_wins: "O wins!",
+	draw: "Draw!",
+};
 
-  function render(state) {
-    state.board.forEach((mark, i) => {
-      cells[i].textContent = mark;
-    });
-    statusEl.textContent = RESULT_TEXT[state.result] || `${state.turn}'s turn`;
-  }
+function render(state) {
+	state.board.forEach((mark, i) => {
+		cells[i].textContent = mark;
+	});
+	statusEl.textContent = RESULT_TEXT[state.result] || `${state.turn}'s turn`;
+}
 
-  function showError(message) {
-    statusEl.textContent = message;
-  }
+function showError(message) {
+	statusEl.textContent = message;
+}
 
-  async function loadState() {
-    const res = await fetch('/state');
-    const data = await res.json();
-    render(data);
-  }
+function loadState(data) {
+	render(data);
+}
 
-	function sendPosition(cell) {
+function sendPosition(cell) {
 	socket.send(JSON.stringify({"position": Number(cell.dataset.position)}));
 }
 
-  cells.forEach((cell) => {
-    cell.addEventListener('click', () => {
+cells.forEach((cell) => {
+	cell.addEventListener('click', () => {
 	sendPosition(cell)
-    });
-  });
+	});
+});
 
-  loadState();
 </script>
 
 </body>

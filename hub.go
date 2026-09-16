@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
@@ -93,9 +94,11 @@ func (h *Hub) broadcastCount() {
 func (h *Hub) broadcastState() {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
 
 	for conn := range h.connections {
-		err := wsjson.Write(context.Background(), conn, h.room)
+		err := wsjson.Write(ctx, conn, h.room)
 		if err != nil {
 			log.Printf("Failed writing to connection: %v", err)
 		}
