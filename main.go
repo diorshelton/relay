@@ -64,9 +64,12 @@ func main() {
 			err = hub.applyMove(player, msg.Position)
 			if err != nil {
 				log.Printf("Move err: %v", err)
+				if sendErr := hub.sendError(c, err); sendErr != nil {
+					log.Printf("Failed writing to connection: %v", sendErr)
+				}
+			} else {
+				hub.broadcastState()
 			}
-
-			hub.broadcastState()
 		}
 	})
 

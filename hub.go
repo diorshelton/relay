@@ -26,6 +26,10 @@ type MoveMessage struct {
 	Position int `json:"position"`
 }
 
+type ErrorMessage struct {
+	Error string `json:"error"`
+}
+
 type Hub struct {
 	mu          sync.Mutex
 	room        *GameState
@@ -69,6 +73,15 @@ func (h *Hub) applyMove(player *Player, position int) error {
 	}
 
 	return h.room.MakeMove(position)
+}
+
+func (h *Hub) sendError(conn *websocket.Conn, moveErr error) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+
+	msg := ErrorMessage{Error: moveErr.Error()}
+
+	return wsjson.Write(ctx, conn, msg)
 }
 
 func (h *Hub) Remove(conn *websocket.Conn) {

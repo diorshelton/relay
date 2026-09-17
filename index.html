@@ -77,6 +77,10 @@
 		if (data.board) {
 			loadState(data)
 		}
+
+		if (data.error) {
+			showError(data.error)
+		}
 	});
 
 	socket.onerror = (err) => {
