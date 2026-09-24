@@ -34,20 +34,16 @@ func main() {
 		//add client connection to hub
 		player, err := hub.Join(c)
 		if err != nil {
-			hub.Remove(c)
+			// Join never added c to the hub, so there's nothing to tear down —
+			// just reject this connection.
 			c.Close(websocket.StatusPolicyViolation, "game already full")
-			//TODO: Add fallback for closed connection after removal
 			return
 		}
 
-		hub.broadcastCount()
 		hub.broadcastState()
 
 		// Cleanup runs when the user leaves or closes the tab
-		defer func() {
-			hub.Remove(c)
-			c.Close(websocket.StatusNormalClosure, "connection closed")
-		}()
+		defer hub.EndGame()
 
 		// Keep the connection open and read incoming messages
 		ctx := context.Background()

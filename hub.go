@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"log"
 	"sync"
@@ -16,11 +15,6 @@ var (
 	ErrGameFull  = errors.New("game is already full")
 	ErrWrongTurn = errors.New("opposing player's turn")
 )
-
-type ConnectionMessage struct {
-	Type  string `json:"type"`
-	Count int    `json:"count"`
-}
 
 type MoveMessage struct {
 	Position int `json:"position"`
@@ -84,38 +78,28 @@ func (h *Hub) sendError(conn *websocket.Conn, moveErr error) error {
 	return wsjson.Write(ctx, conn, msg)
 }
 
-func (h *Hub) Remove(conn *websocket.Conn) {
-	h.mu.Lock()
-	delete(h.connections, conn)
-	h.mu.Unlock()
-
-	h.broadcastCount()
-}
-
-func (h *Hub) broadcastCount() {
+// EndGame tears down the current round: closes every connection, clears the
+// connection map, and resets the room to a fresh game. A single player
+// leaving ends the game for whoever's left.
+//
+// Guarded so a call with nothing left to clean up (a stale call from a
+// connection whose read loop only failed because EndGame already closed its
+// socket) is a no-op, rather than resetting a room that a later "play again"
+// reconnect may have already repopulated.
+func (h *Hub) EndGame() {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	defer cancel()
 
-	msg := ConnectionMessage{
-		Type:  "connection_update",
-		Count: len(h.connections),
-	}
-
-	payload, err := json.Marshal(msg)
-	if err != nil {
-		log.Printf("Failed to marshal JSON: %v", err)
+	if len(h.connections) == 0 {
 		return
 	}
 
-	//Iterate through every active connection and write the message
 	for conn := range h.connections {
-		err := conn.Write(ctx, websocket.MessageText, payload)
-		if err != nil {
-			log.Printf("Failed writing to connection: %v", err)
-		}
+		conn.Close(websocket.StatusNormalClosure, "opponent left")
+		delete(h.connections, conn)
 	}
+
+	h.room.Reset()
 }
 
 func (h *Hub) broadcastState() {
