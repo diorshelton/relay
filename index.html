@@ -69,11 +69,7 @@
 
 	socket.addEventListener("message", (event) => {
 		const data = JSON.parse(event.data);
-		//Check if the server sent a connection count update
-		if (data.type == "connection_update") {
-			connStatusEl.innerText = `Connected! Total Connections = ${data.count}`;
-		}
-		
+
 		if (data.board) {
 			loadState(data)
 		}
@@ -84,10 +80,19 @@
 	});
 
 	socket.onerror = (err) => {
-		connStatusEl.innerText = "Connection failed"	
-		connStatusEl.style.color = "red"	
+		connStatusEl.innerText = "Connection failed"
+		connStatusEl.style.color = "red"
 	};
 
+	socket.addEventListener("close", (event) => {
+		if (!event.wasClean) {
+			return;
+		}
+		connStatusEl.innerHTML = '<button id="play-again">Play again</button>';
+		document.getElementById("play-again").addEventListener("click", () => {
+			window.location.reload();
+		});
+	});
 
 const statusEl = document.getElementById('status');
 const cells = document.querySelectorAll('.cell');
