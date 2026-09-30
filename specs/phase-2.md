@@ -206,6 +206,6 @@ Message protocol: Collapsed protocol to one structure - `GameState` is what gets
 
 Reconnect: dropped 20 second reconnection and grace-period feature, for now a single dropped player ends the game for both players. Will revisit in future once it's deployed and supports multiple games and matchmaking.
 
-Mutex: Removed mutex from `game.go` and placed in `hub.go` so every mutation goes through one lock, after `Player` was found mutating state outside it.
+Mutex: Removed mutex from `game.go` and placed in `hub.go` so every mutation goes through one lock, after `Player` was found mutating state outside it. Spreading state across `GameState` and `Player` made it difficult to reason about who could touch what.
 
 Phase 2 introduced a great deal of premature complexity that stalled deployment and feature development. Scope was cut in favor of getting a working MVP deployed that can be iterated on much faster. Will incrementally revisit features as iterations continue.
