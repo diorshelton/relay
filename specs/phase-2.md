@@ -1,5 +1,7 @@
 # Relay — Phase 2 Spec: Networked Multiplayer (WebSockets, Single Game)
 
+> The plan below is the original intent and is partly superseded. See [What changed and why](#what-changed-and-why) at the end for where the build diverged.
+
 ## Context
 
 Phase 1 proved out the game logic and UI in a single process, no networking, hotseat mode.
@@ -193,3 +195,17 @@ All messages on the open socket share a typed envelope:
 - Letting the grace period lapse (or the remaining player manually resetting) clears the board
   and frees both slots for a new game.
 - `go vet`, `gofmt`, and `go test -race` all stay clean with the new WebSocket code.
+
+## What changed and why
+
+Read-pump/write-pump architecture: used coder/websocket built in `wsjson.Read()` and `wsjson.Write()` methods instead of proposed architecture. Proposal prematurely solves a problem (a single slow connection blocking other players) that does not yet exist.
+
+HTTP API: Removed redundant API as a single game can be played for now over websockets.
+
+Message protocol: Collapsed protocol to one structure - `GameState` is what gets broadcast replacing separate types per situation.
+
+Reconnect: dropped 20 second reconnection and grace-period feature, for now a single dropped player ends the game for both players. Will revisit in future once it's deployed and supports multiple games and matchmaking.
+
+Mutex: Removed mutex from `game.go` and placed in `hub.go` so every mutation goes through one lock, after `Player` was found mutating state outside it.
+
+Phase 2 introduced a great deal of premature complexity that stalled deployment and feature development. Scope was cut in favor of getting a working MVP deployed that can be iterated on much faster. Will incrementally revisit features as iterations continue.
