@@ -65,74 +65,70 @@
 
 	socket.addEventListener("open", (event) => {
 		document.getElementById("conn-status").style.color = "green"
-		
-		//Send test message
-		socket.send(JSON.stringify({message: `Connected`}));
-
 	});
 
 	socket.addEventListener("message", (event) => {
 		const data = JSON.parse(event.data);
-		//Check if the server sent a connection count update
-		if (data.type == "connection_update") {
-			connStatusEl.innerText = `Connected! Total Connections = ${data.count}`;
+
+		if (data.board) {
+			loadState(data)
+		}
+
+		if (data.error) {
+			showError(data.error)
 		}
 	});
 
 	socket.onerror = (err) => {
-		connStatusEl.innerText = "Connection failed"	
-		connStatusEl.style.color = "red"	
+		connStatusEl.innerText = "Connection failed"
+		connStatusEl.style.color = "red"
 	};
 
+	socket.addEventListener("close", (event) => {
+		if (!event.wasClean) {
+			return;
+		}
+		connStatusEl.innerHTML = '<button id="play-again">Play again</button>';
+		document.getElementById("play-again").addEventListener("click", () => {
+			window.location.reload();
+		});
+	});
 
-  const statusEl = document.getElementById('status');
-  const cells = document.querySelectorAll('.cell');
+const statusEl = document.getElementById('status');
+const cells = document.querySelectorAll('.cell');
 
-  const RESULT_TEXT = {
-    in_progress: null,
-    x_wins: "X wins!",
-    o_wins: "O wins!",
-    draw: "Draw!",
-  };
+const RESULT_TEXT = {
+	in_progress: null,
+	x_wins: "X wins!",
+	o_wins: "O wins!",
+	draw: "Draw!",
+};
 
-  function render(state) {
-    state.board.forEach((mark, i) => {
-      cells[i].textContent = mark;
-    });
-    statusEl.textContent = RESULT_TEXT[state.result] || `${state.turn}'s turn`;
-  }
+function render(state) {
+	state.board.forEach((mark, i) => {
+		cells[i].textContent = mark;
+	});
+	statusEl.textContent = RESULT_TEXT[state.result] || `${state.turn}'s turn`;
+}
 
-  function showError(message) {
-    statusEl.textContent = message;
-  }
+function showError(message) {
+	statusEl.textContent = message;
+}
 
-  async function loadState() {
-    const res = await fetch('/state');
-    const data = await res.json();
-    render(data);
-  }
+function loadState(data) {
+	render(data);
+}
 
-  async function makeMove(position) {
-    const res = await fetch('/move', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ position }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      render(data);
-    } else {
-      showError(data.error);
-    }
-  }
+function sendPosition(cell) {
+	socket.send(JSON.stringify({"position": Number(cell.dataset.position)}));
+}
 
-  cells.forEach((cell) => {
-    cell.addEventListener('click', () => {
-      makeMove(Number(cell.dataset.position));
-    });
-  });
+cells.forEach((cell) => {
+	cell.addEventListener('click', () => {
+	sendPosition(cell)
+	});
+});
 
-  loadState();
 </script>
 
 </body>

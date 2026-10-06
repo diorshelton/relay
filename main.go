@@ -7,25 +7,17 @@ import (
 	"net/http"
 
 	"github.com/coder/websocket"
+	"github.com/coder/websocket/wsjson"
 )
 
 func main() {
 	game := NewGameState()
-	hub := NewHub()
+	hub := NewHub(game)
 
 	mux := http.NewServeMux()
 
+	//WebSocket endpoint
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "index.html")
-
-	})
-
-	mux.HandleFunc("GET /state", game.HandleState)
-	mux.HandleFunc("POST /move", game.HandleMove)
-	mux.HandleFunc("POST /reset", game.HandleReset)
-
-	//Test WebSocket endpoint
-	mux.HandleFunc("GET /test", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "./index.html")
 	})
 
@@ -40,31 +32,41 @@ func main() {
 		log.Println("WebSocket connection established successfully")
 
 		//add client connection to hub
-		_, err = hub.Join(c, game)
+		player, err := hub.Join(c)
 		if err != nil {
+			// Join never added c to the hub, so there's nothing to tear down —
+			// just reject this connection.
 			c.Close(websocket.StatusPolicyViolation, "game already full")
 			return
 		}
 
-		hub.broadcastCount()
+		hub.broadcastState()
 
 		// Cleanup runs when the user leaves or closes the tab
-		defer func() {
-			hub.Remove(c)
-			c.Close(websocket.StatusNormalClosure, "connection closed")
-		}()
+		defer hub.EndGame()
 
 		// Keep the connection open and read incoming messages
 		ctx := context.Background()
+		var msg MoveMessage
+
 		for {
-			_, _, err := c.Read(ctx)
+			err := wsjson.Read(ctx, c, &msg)
 			if err != nil {
 				// Loop breadks immediately if tab closes, triggering defer cleanup
-				log.Printf("Read error (connection dropped): %v", err)
+				log.Printf("Read error: %v", err)
 				break
 			}
-		}
 
+			err = hub.applyMove(player, msg.Position)
+			if err != nil {
+				log.Printf("Move err: %v", err)
+				if sendErr := hub.sendError(c, err); sendErr != nil {
+					log.Printf("Failed writing to connection: %v", sendErr)
+				}
+			} else {
+				hub.broadcastState()
+			}
+		}
 	})
 
 	serverAddress := ":8080"

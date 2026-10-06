@@ -4,6 +4,9 @@ This project is being built in phases, sequenced so each one both ships somethin
 and deliberately teaches a specific Go/systems-design concept, rather than piling on
 everything at once. See [README.md](README.md) for what's runnable right now.
 
+This roadmap is the plan for each phase: its intended goals and the reasoning behind them. Where
+a phase diverged from the plan, and why, is recorded in that phase's spec at `specs/phase-N.md`.
+
 ### Phase 1 — Hotseat, single process (done)
 
 Single-process, single-game, no-networking. Two people share one browser tab and click

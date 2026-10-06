@@ -1,15 +1,60 @@
 package main
 
 import (
-	"context"
-	"net/http"
-	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/coder/websocket"
-	"github.com/coder/websocket/wsjson"
 )
+
+func TestApplyMove(t *testing.T) {
+	tests := []struct {
+		name          string
+		initialBoard  [9]string
+		movePosition  int
+		expectErr     bool
+		wantBoardCell string
+	}{
+		{
+			name:          "Valid empty cell move",
+			initialBoard:  [9]string{},
+			movePosition:  1,
+			expectErr:     false,
+			wantBoardCell: "X",
+		},
+		{
+			name:          "Invalid occupied cell move",
+			initialBoard:  [9]string{"O"},
+			movePosition:  0,
+			expectErr:     true,
+			wantBoardCell: "O",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			game := &GameState{
+				Board: tc.initialBoard,
+				Turn:  xRole,
+			}
+
+			hub := NewHub(game)
+			player := &Player{conn: nil, role: xRole}
+
+			err := hub.applyMove(player, tc.movePosition)
+
+			if (err != nil) != tc.expectErr {
+				t.Fatalf("applyMove() unexpected error state: %v", err)
+			}
+
+			actualCell := game.Board[tc.movePosition]
+
+			if actualCell != tc.wantBoardCell {
+				t.Errorf("Board cell state mismatch at position %d: got %q, want %q", tc.movePosition, actualCell, tc.wantBoardCell)
+			}
+		})
+	}
+}
 
 func TestJoin(t *testing.T) {
 	tests := []struct {
@@ -41,17 +86,17 @@ func TestJoin(t *testing.T) {
 		},
 	}
 
-	hub := &Hub{
-		connections: make(map[*websocket.Conn]*Player),
+	game := &GameState{
+		Turn: xRole,
 	}
 
-	game := &GameState{
-		turn: xRole,
+	hub := &Hub{
+		connections: make(map[*websocket.Conn]*Player), room: game,
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			player, err := hub.Join(tc.conn, game)
+			player, err := hub.Join(tc.conn)
 
 			conns := len(hub.connections)
 
@@ -68,56 +113,4 @@ func TestJoin(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestBroadcastCount(t *testing.T) {
-	t.Parallel()
-
-	hub := NewHub()
-	game := NewGameState()
-
-	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		c, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-			OriginPatterns: []string{"*"},
-		})
-		if err != nil {
-			return
-		}
-		defer c.Close(websocket.StatusInternalError, "internal error")
-
-		_, err = hub.Join(c, game)
-		if err != nil {
-			c.Close(websocket.StatusPolicyViolation, "game already full")
-			return
-		}
-
-		hub.broadcastCount()
-
-		defer func() {
-			hub.Remove(c)
-			c.Close(websocket.StatusNormalClosure, "connection closed")
-		}()
-
-	}))
-	defer s.Close()
-
-	// Dial test server
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	defer cancel()
-
-	wsURL := "ws" + s.URL[len("http"):]
-	c, _, err := websocket.Dial(ctx, wsURL, nil)
-	if err != nil {
-		t.Fatalf("failed to dial: %v", err)
-	}
-	defer c.Close(websocket.StatusGoingAway, "client closing")
-
-	var inMsg ConnectionMessage
-
-	err = wsjson.Read(ctx, c, &inMsg)
-	if err != nil {
-		t.Fatalf("failed to read %v", err)
-	}
-
-	t.Log(inMsg)
 }
