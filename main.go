@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
@@ -69,11 +70,16 @@ func main() {
 		}
 	})
 
-	serverAddress := ":8080"
+	portStr := os.Getenv("PORT")
+	if portStr == "" {
+		portStr = "8080"
+	}
 
-	fmt.Printf("Starting server on port %s\n", serverAddress)
+	addr := ":" + portStr
 
-	err := http.ListenAndServe(serverAddress, mux)
+	fmt.Printf("Starting server on port %s\n", portStr)
+
+	err := http.ListenAndServe(addr, mux)
 	if err != nil {
 		log.Fatalf("Server failed to start %v", err)
 	}
