@@ -98,7 +98,7 @@ func (h *Hub) EndGame() {
 		start := time.Now()
 		err := conn.Close(websocket.StatusNormalClosure, "opponent left")
 		elapsed := time.Since(start)
-		log.Printf("Player: %v err: %v time:%v player:%v", player.role, err, elapsed)
+		log.Printf("Player: %v err: %v time:%v", player.role, err, elapsed)
 		delete(h.connections, conn)
 	}
 
