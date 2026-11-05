@@ -94,11 +94,11 @@ func (h *Hub) EndGame() {
 		return
 	}
 
-	for conn := range h.connections {
+	for conn, player := range h.connections {
 		start := time.Now()
 		err := conn.Close(websocket.StatusNormalClosure, "opponent left")
 		elapsed := time.Since(start)
-		log.Printf("EndGame err val: %v time:%v", err, elapsed)
+		log.Printf("Player: %v err: %v time:%v player:%v", player.role, err, elapsed)
 		delete(h.connections, conn)
 	}
 
